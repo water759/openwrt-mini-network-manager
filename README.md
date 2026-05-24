@@ -48,7 +48,14 @@
 
 
 ## ！！注意！！
-- 每台机器使用的网卡可能不同，运行前请在config.c中修改device的值。
+- 每台机器使用的网卡可能不同，运行前请查看网卡类型，命令如下：
+``` bash
+ip link
+```
+获得网卡类型后，在运行文件的命令行中加入 ** -i 网卡类型 **,如：
+``` bash
+./netmon -i wlo1
+```
 
 ## 运行说明
 本项目采用ubuntu与openwrt交叉编译，实际运行的文件需放在src文件夹下，测试文件放在tests下（！！！务必！！！）。
@@ -58,7 +65,7 @@
 cd project1
 mkdir -p build && cd build  #可以省略，但建议加上（因为make后会生成大量文件）。
 cmake .. -DCMAKE_TOOLCHAIN_FILE=../../toolchain.cmake
-make lab2
+make netmon
 ```
 
 

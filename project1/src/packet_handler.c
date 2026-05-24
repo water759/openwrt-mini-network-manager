@@ -167,12 +167,12 @@ static int parse_packet(const u_char *pkt, uint32_t caplen, int dlt,
 
     if (ip->protocol == IPPROTO_TCP && l4_len >= sizeof(struct tcphdr)) {
         const struct tcphdr *tcp = (const struct tcphdr *)l4;
-        out->src_port = ntohs(tcp->source);
-        out->dst_port = ntohs(tcp->dest);
+        out->src_port = ntohs(tcp->th_sport);
+        out->dst_port = ntohs(tcp->th_dport);
     } else if (ip->protocol == IPPROTO_UDP && l4_len >= sizeof(struct udphdr)) {
         const struct udphdr *udp = (const struct udphdr *)l4;
-        out->src_port = ntohs(udp->source);
-        out->dst_port = ntohs(udp->dest);
+        out->src_port = ntohs(udp->uh_sport);
+        out->dst_port = ntohs(udp->uh_dport);
     }
 
     return 0;

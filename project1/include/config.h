@@ -35,6 +35,7 @@ typedef struct {
 } Config;
 
 void load_config();
+void parse_args(int argc, char **argv);
 extern Config g_config;
 
 #endif

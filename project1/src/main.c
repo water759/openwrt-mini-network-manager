@@ -1,6 +1,12 @@
 #include <stdio.h>
 
-int main() {
-    printf("hello openwrt\n");
+#include "config.h"
+#include "capture.h"
+
+int main(int argc, char **argv)
+{
+    load_config();
+    parse_args(argc, argv);
+    capture_init();
     return 0;
 }

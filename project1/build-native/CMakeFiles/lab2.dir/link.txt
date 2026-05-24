@@ -1,0 +1,1 @@
+/usr/bin/cc CMakeFiles/lab2.dir/src/capture.c.o CMakeFiles/lab2.dir/src/config.c.o CMakeFiles/lab2.dir/src/history.c.o CMakeFiles/lab2.dir/src/iface_info.c.o CMakeFiles/lab2.dir/src/logger.c.o CMakeFiles/lab2.dir/src/main.c.o CMakeFiles/lab2.dir/src/packet_handler.c.o -o lab2  -lpthread -lpcap 
