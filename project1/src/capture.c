@@ -9,14 +9,17 @@
 #include "iface_info.h"
 #include "packet_handler.h"
 #include "history.h"
+#include "stats_export.h"
 
 static history_t g_history;
 static handler_ctx_t g_handler_ctx;
 static handler_user_t g_handler_user;
 static pcap_t *g_pcap_handle;
+static volatile sig_atomic_t g_running = 1;
 static void on_sigint(int sig)
 {
     (void)sig;
+    g_running = 0;
     if (g_pcap_handle)
         pcap_breakloop(g_pcap_handle);
 }
@@ -47,9 +50,8 @@ void capture_init(void)
     bpf_u_int32 net;//仅占位
     bpf_u_int32 mask = PCAP_NETMASK_UNKNOWN;
     if (pcap_lookupnet(g_config.device, &net, &mask, errbuf) == -1) {
-        log_error("pcap_lookupnet failed: %s", errbuf);
-        pcap_close(handle);
-        return;
+        log_info("pcap_lookupnet failed: %s, use PCAP_NETMASK_UNKNOWN", errbuf);
+        mask = PCAP_NETMASK_UNKNOWN;
     }
 
     if (g_config.filter_str[0] != '\0') {
@@ -90,15 +92,27 @@ void capture_init(void)
     g_handler_user.ctx = &g_handler_ctx;
     g_handler_user.hist = &g_history;
 
-    log_info("start pcap_loop...");
-    int ret = pcap_loop(handle, g_config.cnt,
-                        packet_handler, (u_char *)&g_handler_user);
+    log_info("start capture loop...");
+    int ret = 0;
+
+    while (g_running) {
+        /* 每次最多处理 50 个包，避免一直收包不写 JSON */
+        int n = pcap_dispatch(handle, 50,
+                              packet_handler, (u_char *)&g_handler_user);
+        if (n < 0) {
+            ret = n;
+            break;
+        }
+
+        history_write_json(&g_history, STATS_JSON_PATH);
+    }
 
     if (ret == -1)
-        log_error("pcap_loop failed: %s", pcap_geterr(handle));
+        log_error("pcap_dispatch failed: %s", pcap_geterr(handle));
     else if (ret == -2)
-        log_info("pcap_loop interrupted");
+        log_info("capture interrupted");
 
+    history_write_json(&g_history, STATS_JSON_PATH);  /* 最后再写一次 */
     history_dump(&g_history);
     pcap_close(handle);
     g_pcap_handle = NULL;

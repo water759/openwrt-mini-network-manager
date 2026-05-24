@@ -1,2 +1,8 @@
-build/
-build-native/
+project1/build/
+project1/build-native/
+web/ui/node_modules/
+web/ui/dist/
+web/ui/.DS_Store/
+web/ui/*.local
+web/ui/README.md
+record.md
