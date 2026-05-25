@@ -1,5 +1,6 @@
 <template>
-  <el-table :data="paged" v-loading="loading" size="small" stripe style="width: 100%">
+  <div class="flow-table-root">
+  <el-table :data="paged" v-loading="loading" size="small" stripe class="fill-table">
     <el-table-column prop="src_ip" label="源 IP" min-width="110" />
     <el-table-column prop="src_port" label="源端口" width="72">
       <template #default="{ row }">{{ row.src_port || '-' }}</template>
@@ -41,6 +42,7 @@
       small
     />
   </div>
+  </div>
 </template>
 
 <script setup>
@@ -78,6 +80,17 @@ function barPct(total) {
 </script>
 
 <style scoped>
+.flow-table-root {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.fill-table {
+  width: 100% !important;
+  flex: 1;
+}
 .sub { font-size: 11px; color: var(--text-secondary); }
 .bar-cell span { font-size: 12px; display: block; margin-bottom: 4px; }
 .pager {

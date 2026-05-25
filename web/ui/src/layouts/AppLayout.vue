@@ -31,9 +31,9 @@
         </div>
         <div class="topbar-right">
           <span class="clock">{{ nowStr }}</span>
-          <span class="status-ok">
+          <span class="status-ok" :class="{ 'status-bad': !apiOk }">
             <span class="dot"></span>
-            系统状态: OK
+            系统状态: {{ apiOk ? 'OK' : '异常' }}
           </span>
           <el-select v-model="pollSec" size="small" style="width: 88px" @change="onPollChange">
             <el-option label="1秒" :value="1" />
@@ -64,12 +64,24 @@ import {
   DataLine, Bell, Monitor, Tools, InfoFilled,
 } from '@element-plus/icons-vue'
 import { formatTime } from '@/utils/format'
+import { fetchHealth } from '@/api/traffic'
 
 const route = useRoute()
 const nowStr = ref(formatTime())
 const pollSec = ref(2)
+const apiOk = ref(false)
 
 let clockTimer = null
+let healthTimer = null
+
+async function checkHealth() {
+  try {
+    const h = await fetchHealth()
+    apiOk.value = !!h.ok
+  } catch {
+    apiOk.value = false
+  }
+}
 
 const navGroups = [
   {
@@ -106,15 +118,19 @@ function onPollChange() {
 }
 
 function onRefresh() {
+  checkHealth()
   window.dispatchEvent(new CustomEvent('netmon-refresh'))
 }
 
 onMounted(() => {
   clockTimer = setInterval(() => { nowStr.value = formatTime() }, 1000)
+  checkHealth()
+  healthTimer = setInterval(checkHealth, 5000)
 })
 
 onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
+  if (healthTimer) clearInterval(healthTimer)
 })
 </script>
 
@@ -244,6 +260,14 @@ onUnmounted(() => {
   height: 8px;
   border-radius: 50%;
   background: var(--nagios-green);
+}
+
+.status-ok.status-bad {
+  color: #f56c6c;
+}
+
+.status-ok.status-bad .dot {
+  background: #f56c6c;
 }
 
 .content {

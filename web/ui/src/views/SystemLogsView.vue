@@ -2,9 +2,10 @@
   <div class="page-card">
     <div class="page-card-title">系统日志</div>
     <el-input v-model="filter" placeholder="过滤日志..." size="small" clearable class="mb-12" style="max-width: 320px" />
-    <div class="log-box">
+    <div v-if="filtered.length" class="log-box">
       <div v-for="(line, i) in filtered" :key="i" class="log-line" :class="line.level">{{ line.text }}</div>
     </div>
+    <el-empty v-else description="暂无日志数据（后端未提供日志接口）" :image-size="80" />
   </div>
 </template>
 
@@ -12,19 +13,12 @@
 import { ref, computed } from 'vue'
 
 const filter = ref('')
-const lines = [
-  { level: 'info', text: '[INFO] pcap_open_live success on br-lan' },
-  { level: 'info', text: '[INFO] filter: tcp' },
-  { level: 'info', text: '[INFO] start capture loop...' },
-  { level: 'warn', text: '[WARN] flow table 80% full' },
-  { level: 'info', text: '[HTTP] GET /api/traffic 200' },
-  { level: 'error', text: '[ERROR] pcap_lookupnet failed: eth0: no ipv4 (fallback OK)' },
-]
+const lines = ref([])
 
 const filtered = computed(() => {
   const q = filter.value.trim().toLowerCase()
-  if (!q) return lines
-  return lines.filter((l) => l.text.toLowerCase().includes(q))
+  if (!q) return lines.value
+  return lines.value.filter((l) => l.text.toLowerCase().includes(q))
 })
 </script>
 

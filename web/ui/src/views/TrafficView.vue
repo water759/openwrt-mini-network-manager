@@ -33,19 +33,18 @@
           <span>连接流量列表</span>
           <el-input v-model="search" placeholder="搜索 IP..." size="small" clearable style="width: 160px" :prefix-icon="Search" />
         </div>
-        <FlowTable :flows="filteredFlows" :loading="loading" v-model:page="page" v-model:page-size="pageSize" />
+        <div class="flow-table-body">
+          <FlowTable :flows="filteredFlows" :loading="loading" v-model:page="page" v-model:page-size="pageSize" />
+        </div>
       </div>
     </div>
 
     <el-row :gutter="16" class="status-row">
-      <el-col :xs="24" :md="8">
-        <StatusTable title="主机状态" :columns="hostCols" :data="hostData" more-link="#" />
+      <el-col :span="24">
+        <StatusTable title="服务状态" :columns="svcCols" :data="svcData" />
       </el-col>
-      <el-col :xs="24" :md="8">
-        <StatusTable title="服务状态" :columns="svcCols" :data="svcData" more-link="#" />
-      </el-col>
-      <el-col :xs="24" :md="8">
-        <StatusTable title="最近告警" :columns="alarmCols" :data="alarmData" more-link="#" />
+      <el-col :span="24">
+        <StatusTable title="活跃主机" :columns="hostCols" :data="hostData" />
       </el-col>
     </el-row>
   </div>
@@ -133,40 +132,53 @@ const lastUpdateStr = computed(() => {
 })
 
 const hostCols = [
-  { prop: 'name', label: '主机名', width: 100 },
-  { prop: 'status', label: '状态', width: 90 },
-  { prop: 'last', label: '最后检查', width: 100 },
-  { prop: 'duration', label: '持续时间' },
-]
-const hostData = [
-  { name: 'openwrt', status: 'UP', last: '15:30:40', duration: '2d 14h' },
-  { name: 'gateway', status: 'UP', last: '15:30:38', duration: '2d 14h' },
-  { name: 'dns-server', status: 'UP', last: '15:30:35', duration: '2d 14h' },
+  { prop: 'name', label: 'IP', minWidth: 140 },
+  { prop: 'status', label: '状态', minWidth: 100 },
+  { prop: 'last', label: '最后更新', minWidth: 160 },
+  { prop: 'duration', label: '流量', minWidth: 120 },
 ]
 
 const svcCols = [
-  { prop: 'service', label: '服务', width: 90 },
-  { prop: 'host', label: '主机', width: 80 },
-  { prop: 'status', label: '状态', width: 80 },
-  { prop: 'output', label: '输出' },
-]
-const svcData = [
-  { service: 'HTTP', host: 'openwrt', status: 'OK', output: 'HTTP OK: 200 OK' },
-  { service: 'SSH', host: 'openwrt', status: 'OK', output: 'SSH OK - port 22 open' },
-  { service: 'NetMon', host: 'openwrt', status: 'OK', output: 'netmon process running' },
+  { prop: 'service', label: '服务', minWidth: 100 },
+  { prop: 'host', label: '主机', minWidth: 100 },
+  { prop: 'status', label: '状态', minWidth: 100 },
+  { prop: 'output', label: '输出', minWidth: 200 },
 ]
 
-const alarmCols = [
-  { prop: 'time', label: '时间', width: 90 },
-  { prop: 'type', label: '类型', width: 70 },
-  { prop: 'target', label: '主机/服务' },
-  { prop: 'level', label: '状态', width: 80 },
-]
-const alarmData = [
-  { time: '15:28:10', type: '流量', target: 'openwrt/eth0', level: 'WARNING', info: 'TX 速率超过阈值' },
-  { time: '15:15:00', type: '服务', target: 'openwrt/NetMon', level: 'OK', info: '服务恢复' },
-  { time: '14:50:22', type: '主机', target: 'gateway', level: 'CRITICAL', info: 'ICMP 不可达' },
-]
+const hostData = computed(() => {
+  const bytesByIp = new Map()
+  for (const f of flows.value) {
+    for (const ip of [f.src_ip, f.dst_ip]) {
+      if (!ip) continue
+      const add = (f.rx_bytes || 0) + (f.tx_bytes || 0)
+      bytesByIp.set(ip, (bytesByIp.get(ip) || 0) + add)
+    }
+  }
+  return [...bytesByIp.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 20)
+    .map(([name, bytes]) => ({
+      name,
+      status: online.value ? 'UP' : 'DOWN',
+      last: lastUpdateStr.value,
+      duration: formatBytes(bytes),
+    }))
+})
+
+const svcData = computed(() => [
+  {
+    service: 'NetMon',
+    host: 'local',
+    status: online.value ? 'OK' : 'DOWN',
+    output: online.value ? 'stats.json 可用' : 'stats.json 不可用',
+  },
+  {
+    service: 'API',
+    host: 'local',
+    status: error.value ? 'DOWN' : 'OK',
+    output: error.value || 'HTTP 后端正常',
+  },
+])
 
 function onPollChange(e) {
   stopPolling()
@@ -194,10 +206,13 @@ onUnmounted(() => {
 .stats-row { margin-bottom: 16px; }
 .stats-row .stat-card { margin-bottom: 12px; height: 100%; }
 .status-row { margin-top: 0; }
+.status-row .el-col { width: 100%; max-width: 100%; }
+.status-row .el-col + .el-col { margin-top: 16px; }
+.status-row :deep(.status-table) { width: 100%; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .chart-panels {
   display: grid;
-  grid-template-columns: 0.9fr 1fr;
+  grid-template-columns: 1fr 1.4fr;
   gap: 16px;
   align-items: stretch;
   margin-bottom: 16px;
@@ -225,9 +240,26 @@ onUnmounted(() => {
 }
 .chart-body :deep(.rate-chart) {
   width: 100%;
+  height: 100%;
+  min-height: 300px;
+}
+.flow-card {
+  display: flex;
+  flex-direction: column;
+}
+.flow-table-body {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 .flow-card :deep(.el-table) {
+  width: 100% !important;
   flex: 1;
+}
+.flow-card :deep(.pager) {
+  width: 100%;
 }
 .chart-summary {
   display: flex;

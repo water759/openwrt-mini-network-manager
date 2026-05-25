@@ -60,6 +60,7 @@ const option = computed(() => ({
 <style scoped>
 .rate-chart {
   width: 100%;
-  height: 380px;
+  height: 100%;
+  min-height: 300px;
 }
 </style>
