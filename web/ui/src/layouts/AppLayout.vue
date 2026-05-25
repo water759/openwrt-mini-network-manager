@@ -60,8 +60,8 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {
   Fold, Refresh,
-  Connection, Lock, Document,
-  DataLine, Bell, Monitor, Tools, InfoFilled,
+  Connection, Lock,
+  DataLine, Monitor, Tools, InfoFilled,
 } from '@element-plus/icons-vue'
 import { formatTime } from '@/utils/format'
 import { fetchHealth } from '@/api/traffic'
@@ -89,14 +89,12 @@ const navGroups = [
     items: [
       { path: '/traffic', title: '流量监控', icon: Connection },
       { path: '/firewall', title: '防火墙管理', icon: Lock },
-      { path: '/logs', title: '系统日志', icon: Document },
     ],
   },
   {
     label: 'Reports',
     items: [
       { path: '/report', title: '流量报表', icon: DataLine },
-      { path: '/alerts', title: '告警历史', icon: Bell },
     ],
   },
   {
