@@ -28,8 +28,8 @@
 - **平台**：OpenWrt（交叉编译）
 - **流量采集**：C、libpcap
 - **后端 API**：Python 3
-- **防火墙**：iptables
-- **前端**：Vue 3、Vite、Element Plus、ECharts
+- **防火墙**：iptables（Shell / Python 脚本）
+- **前端**：JavaScript、CSS、Vue 3、Vite、Element Plus、ECharts
 - **构建**：CMake
 
 ## 项目结构
