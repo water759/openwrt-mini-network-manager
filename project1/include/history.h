@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define MAX_FLOWS 256
+#define MAX_FLOWS 4096
 
 typedef struct {
     uint32_t src_ip;
