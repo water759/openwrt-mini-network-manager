@@ -1,3 +1,4 @@
+# 轻量 HTTP API：读取 netmon 导出的流量 JSON，并通过 scripts/*.sh 管理防火墙规则
 import ipaddress
 import json
 import os
@@ -14,7 +15,7 @@ ACTIONS = frozenset({"ACCEPT", "DROP"})
 DIRECTIONS = frozenset({"inbound", "forward"})
 ZONES = frozenset({"lan", "wan", "device", "any", "custom"})
 def read_traffic():
-    #读取 stats.json；文件不存在或解析失败时返回空结构
+    # 读取 stats.json；文件不存在或解析失败时返回空结构
     empty = {
         "totals": {
             "rx_bytes": 0,
@@ -36,6 +37,7 @@ def script_path(name):
     return os.path.join(SCRIPTS_DIR, name)
 
 
+# 调用 shell 包装脚本；约定 stdout 最后一行为 JSON
 def run_script(name, *args, timeout=15):
     path = script_path(name)
     if not os.path.isfile(path):
@@ -82,6 +84,7 @@ def valid_ip_or_cidr(s):
         return False
 
 
+# 校验防火墙规则字段；失败返回错误字符串，成功返回规范化 dict
 def validate_rule(body, partial=False):
     if not isinstance(body, dict):
         return "body must be a JSON object"
@@ -95,6 +98,7 @@ def validate_rule(body, partial=False):
     name = str(body.get("name", "")).strip()
     enabled = body.get("enabled", True)
 
+    # 未显式指定 zone 时：有合法 CIDR 则 custom，否则 any
     raw_src_zone = body.get("src_zone")
     raw_dst_zone = body.get("dst_zone")
     if raw_src_zone in (None, ""):
@@ -145,6 +149,7 @@ def validate_rule(body, partial=False):
     resolved_src = src if src_zone == "custom" else zone_defaults[src_zone]
     resolved_dst = dst if dst_zone == "custom" else zone_defaults[dst_zone]
 
+    # 拒绝「全网 DROP」，避免误锁设备
     if action == "DROP" and resolved_src in ("0.0.0.0/0", "0.0.0.0") and resolved_dst in (
         "0.0.0.0/0",
         "0.0.0.0",
@@ -165,6 +170,7 @@ def validate_rule(body, partial=False):
     }
 
 class Handler(BaseHTTPRequestHandler):
+    # GET /api/traffic | /api/health | /api/firewall/rules
     def do_GET(self):
         path = urlparse(self.path).path.rstrip("/") or "/"
 
@@ -268,6 +274,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
+    # 启动时创建 iptables 自定义链并回放已保存规则
     init = run_script("fw_init.sh")
     if not init.get("ok"):
         print("[WARN] fw_init:", init.get("error", init))

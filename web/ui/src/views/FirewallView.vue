@@ -129,6 +129,7 @@
 </template>
 
 <script setup>
+// 区域/协议表单 -> API payload；custom 区需填写 CIDR
 import { ref, watch, onMounted } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
 import { ElMessageBox } from 'element-plus'

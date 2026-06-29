@@ -1,3 +1,4 @@
+// 防火墙 REST 封装；后端脚本失败时 ok=false 会抛错
 const API_BASE = import.meta.env.VITE_API_BASE || ''
 
 async function parseJson(res) {

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared firewall rule persistence and iptables helpers."""
+# 防火墙规则持久化（JSON）与 iptables 自定义链 MININETMON_IN / MININETMON_FWD
 import json
 import os
 import subprocess
@@ -30,6 +30,7 @@ def resolve_addr(zone, custom=""):
     return ZONES.get(z, ZONES["any"])
 
 
+# 创建链并在 INPUT/FORWARD 首跳挂钩（已存在则跳过）
 def ensure_chains():
     for chain in (CHAIN_IN, CHAIN_FWD):
         subprocess.run(["iptables", "-N", chain], capture_output=True)
@@ -108,6 +109,7 @@ def apply_rule(rule):
     subprocess.run(iptables_cmd(rule, "-A"), check=True)
 
 
+# -D 失败时再试一次（兼容重复删除等边界情况）
 def remove_rule(rule):
     cmd = iptables_cmd(rule, "-D")
     proc = subprocess.run(cmd, capture_output=True)
@@ -128,8 +130,8 @@ def replay_all():
             apply_rule(rule)
 
 
+# 将旧版仅含 src/dst 的规则推断 direction 与 zone
 def migrate_legacy(rule):
-    """Old rules without direction/zones."""
     if "direction" in rule and "src_zone" in rule:
         return rule
     src = rule.get("src", "0.0.0.0/0")
@@ -233,6 +235,7 @@ def cmd_toggle(rule_id, enabled):
     if idx is None:
         return {"ok": False, "error": "rule not found"}
     want = str(enabled).lower() in ("1", "true", "yes")
+    # 仅切换 iptables，不改规则内容
     if rule.get("enabled") and not want:
         remove_rule(rule)
     elif not rule.get("enabled") and want:

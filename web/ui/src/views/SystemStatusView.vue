@@ -67,6 +67,7 @@ const statusCards = computed(() => [
   { label: '防火墙规则', value: String(ruleCount.value), ok: firewallOk.value },
 ])
 
+// 仪表盘按 10 Mbps 满刻度估算百分比（仅展示用）
 const gauges = computed(() => {
   if (!online.value) return []
   const rxPct = Math.min(100, Math.round((rxBps.value / 10_000_000) * 100))

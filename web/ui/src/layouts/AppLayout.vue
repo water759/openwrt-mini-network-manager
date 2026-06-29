@@ -56,6 +56,7 @@
 </template>
 
 <script setup>
+// 顶栏通过 CustomEvent 通知各页面调整轮询间隔或立即刷新
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import {

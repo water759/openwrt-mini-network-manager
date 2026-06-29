@@ -145,6 +145,7 @@ const svcCols = [
   { prop: 'output', label: '输出', minWidth: 200 },
 ]
 
+// 从流表聚合各 IP 参与过的总字节，取 Top20 作为「活跃主机」
 const hostData = computed(() => {
   const bytesByIp = new Map()
   for (const f of flows.value) {
@@ -189,6 +190,7 @@ function onManualRefresh() {
   refresh()
 }
 
+// 响应 AppLayout 顶栏的轮询间隔 / 手动刷新
 onMounted(() => {
   window.addEventListener('netmon-poll-change', onPollChange)
   window.addEventListener('netmon-refresh', onManualRefresh)

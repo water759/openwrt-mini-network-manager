@@ -74,6 +74,7 @@ const paged = computed(() => {
   return props.flows.slice(start, start + props.pageSize)
 })
 
+// 总流量列进度条：相对当前页数据的最大值
 function barPct(total) {
   return Math.min(100, Math.round(((total || 0) / maxTotal.value) * 100))
 }

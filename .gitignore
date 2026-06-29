@@ -6,3 +6,20 @@ web/ui/.DS_Store/
 web/ui/*.local
 web/ui/README.md
 record.md
+# 本地交叉编译环境（含本机路径）
+env-arm.sh
+env-mips.sh
+env.sh
+
+# 第三方源码包
+project1/libpcap-*.tar.gz
+project1/libpcap-*/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# 误建/临时文件
+project1/Untitled
+*.swp
+*~

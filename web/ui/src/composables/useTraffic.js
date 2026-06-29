@@ -1,3 +1,4 @@
+// 轮询 /api/traffic，根据相邻两次 totals 差分计算 bps 并维护近 60 个图表点
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { fetchTraffic, fetchHealth } from '@/api/traffic'
 
@@ -47,6 +48,7 @@ export function useTraffic(pollMs = 2000) {
     error.value = null
     try {
       const [data, health] = await Promise.all([fetchTraffic(), fetchHealth()])
+      // stats.json 存在才认为 netmon 在跑
       online.value = health.ok && health.stats_exists
       totals.value = data.totals || totals.value
       flows.value = (data.flows || []).map((f) => ({
@@ -59,6 +61,7 @@ export function useTraffic(pollMs = 2000) {
       if (prevTs > 0) {
         const dt = (now - prevTs) / 1000
         if (dt > 0) {
+          // 字节差 * 8 / 秒 -> bps
           const rx = ((totals.value.rx_bytes - prevRx) * 8) / dt
           const tx = ((totals.value.tx_bytes - prevTx) * 8) / dt
           rxBps.value = Math.max(0, rx)

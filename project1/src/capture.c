@@ -1,3 +1,4 @@
+// 抓包主流程：打开网卡、可选 BPF 过滤、循环 dispatch 并周期性导出 JSON
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
@@ -16,6 +17,8 @@ static handler_ctx_t g_handler_ctx;
 static handler_user_t g_handler_user;
 static pcap_t *g_pcap_handle;
 static volatile sig_atomic_t g_running = 1;
+
+// SIGINT：置停止标志并打断 pcap 阻塞循环
 static void on_sigint(int sig)
 {
     (void)sig;
@@ -47,13 +50,14 @@ void capture_init(void)
         return;
     }
 
-    bpf_u_int32 net;//仅占位
+    bpf_u_int32 net;  // pcap_lookupnet 需要 net 出参，本程序未使用
     bpf_u_int32 mask = PCAP_NETMASK_UNKNOWN;
     if (pcap_lookupnet(g_config.device, &net, &mask, errbuf) == -1) {
         log_info("pcap_lookupnet failed: %s, use PCAP_NETMASK_UNKNOWN", errbuf);
         mask = PCAP_NETMASK_UNKNOWN;
     }
 
+    // 配置文件中若指定了 filter，编译并挂到 handle
     if (g_config.filter_str[0] != '\0') {
         struct bpf_program fp;
         if (pcap_compile(handle, &fp, g_config.filter_str,
@@ -72,6 +76,7 @@ void capture_init(void)
         log_info("filter: %s", g_config.filter_str);
     }
 
+    // 填充 packet_handler 所需上下文（链路类型、本机 IP、过滤/转发标志等）
     memset(&g_handler_ctx, 0, sizeof(g_handler_ctx));
     strncpy(g_handler_ctx.ifname, g_config.device,
             sizeof(g_handler_ctx.ifname) - 1);
@@ -96,7 +101,7 @@ void capture_init(void)
     int ret = 0;
 
     while (g_running) {
-        /* 每次最多处理 50 个包，避免一直收包不写 JSON */
+        // 每次最多处理 50 个包，避免一直收包不写 JSON
         int n = pcap_dispatch(handle, 50,
                               packet_handler, (u_char *)&g_handler_user);
         if (n < 0) {
@@ -112,7 +117,7 @@ void capture_init(void)
     else if (ret == -2)
         log_info("capture interrupted");
 
-    history_write_json(&g_history, STATS_JSON_PATH);  /* 最后再写一次 */
+    history_write_json(&g_history, STATS_JSON_PATH);  // 退出前再写一次
     history_dump(&g_history);
     pcap_close(handle);
     g_pcap_handle = NULL;

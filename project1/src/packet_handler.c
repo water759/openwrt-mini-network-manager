@@ -1,3 +1,4 @@
+// pcap 回调：校验长度、判定入站/出站与作用域、解析五元组并更新流统计
 #include "packet_handler.h"
 #include "history.h"
 #include "logger.h"
@@ -12,6 +13,7 @@
 #define ETH_HLEN 14
 #define IP_HLEN_MIN 20
 
+// 按链路类型检查 caplen 是否至少能覆盖以太头 + 最小 IP 头（或裸 IP）
 static int is_packet_length_valid(const struct pcap_pkthdr *hdr,
                                   const u_char *pkt,
                                   int dlt)
@@ -27,6 +29,7 @@ static int is_packet_length_valid(const struct pcap_pkthdr *hdr,
     return hdr->caplen >= IP_HLEN_MIN;
 }
 
+// 以太网帧：跳过 14 字节，仅处理 IPv4（ETHERTYPE_IP）
 static const u_char *get_l3_start(const u_char *pkt, int dlt, uint16_t *ethertype)
 {
     if (dlt != DLT_EN10MB)
@@ -64,6 +67,7 @@ static int ip_belongs_to_router(uint32_t ip, const handler_ctx_t *ctx)
     return ctx->local_ipv4 != 0 && ip == ctx->local_ipv4;
 }
 
+// 以监控网卡 MAC 为源/目的判断 tx/rx
 static pkt_direction_t direction_by_link_layer(const u_char *pkt,
                                                const handler_ctx_t *ctx)
 {
@@ -80,6 +84,7 @@ static pkt_direction_t direction_by_link_layer(const u_char *pkt,
     return DIR_UNKNOWN;
 }
 
+// 以本机 IPv4 为源/目的判断 tx/rx（适用于非以太或 MAC 无法区分时）
 static pkt_direction_t direction_by_ip_layer(const u_char *pkt,
                                              uint32_t caplen,
                                              const handler_ctx_t *ctx)
@@ -102,6 +107,7 @@ static pkt_direction_t direction_by_ip_layer(const u_char *pkt,
     return DIR_UNKNOWN;
 }
 
+// 无 BPF 时：先链路层，再 IP 层
 static pkt_direction_t direction_by_iface_default(const u_char *pkt,
                                                   uint32_t caplen,
                                                   const handler_ctx_t *ctx)
@@ -113,6 +119,7 @@ static pkt_direction_t direction_by_iface_default(const u_char *pkt,
     return direction_by_ip_layer(pkt, caplen, ctx);
 }
 
+// 最后兜底：按源/目的地址大小人为划分方向（仅非转发模式）
 static pkt_direction_t direction_fallback_by_addr(const u_char *pkt,
                                                   uint32_t caplen,
                                                   const handler_ctx_t *ctx)
@@ -130,6 +137,7 @@ static pkt_direction_t direction_fallback_by_addr(const u_char *pkt,
     return (ip->saddr <= ip->daddr) ? DIR_INBOUND : DIR_OUTBOUND;
 }
 
+// 相对路由器：发出 / 发往本机 / 纯转发
 static pkt_scope_t classify_scope(uint32_t src_ip, uint32_t dst_ip,
                                   const handler_ctx_t *ctx)
 {
@@ -143,6 +151,7 @@ static pkt_scope_t classify_scope(uint32_t src_ip, uint32_t dst_ip,
     return PKT_TRANSIT;
 }
 
+// 从 L3 起解析 IPv4 五元组（TCP/UDP 才填端口）
 static int parse_packet(const u_char *pkt, uint32_t caplen, int dlt,
                         parsed_packet_t *out)
 {
@@ -178,34 +187,34 @@ static int parse_packet(const u_char *pkt, uint32_t caplen, int dlt,
     return 0;
 }
 
+// 根据是否有过滤、多地址、转发模式选择方向判定策略
 static pkt_direction_t resolve_direction(const u_char *packet,
                                          uint32_t caplen,
                                          const handler_ctx_t *ctx)
 {
     pkt_direction_t dir;
 
-    /* 无过滤：网卡默认规则，未知则默认入站 */
+    // 无过滤：网卡默认规则，未知则默认入站
     if (!ctx->has_filter) {
         dir = direction_by_iface_default(packet, caplen, ctx);
         return (dir != DIR_UNKNOWN) ? dir : DIR_INBOUND;
     }
 
-    /* 有过滤：物理层 -> IP 层 */
+    // 有过滤：物理层 -> IP 层
     dir = direction_by_link_layer(packet, ctx);
     if (dir == DIR_UNKNOWN)
         dir = direction_by_ip_layer(packet, caplen, ctx);
     if (dir != DIR_UNKNOWN)
         return dir;
 
-    /* 多地址场景 */
+    // 双栈多地址：无法区分时默认入站
     if (ctx->multi_addr)
         return DIR_INBOUND;
 
-    /* 转发模式：仍未知则丢弃 */
+    // 转发模式：仍未知则丢弃（不计入统计）
     if (ctx->forward_mode)
         return DIR_UNKNOWN;
 
-    /* 兜底：按地址大小分配方向 */
     return direction_fallback_by_addr(packet, caplen, ctx);
 }
 
