@@ -152,6 +152,9 @@ wget -qO- http://127.0.0.1:8080/api/health
 wget -qO- http://127.0.0.1:8080/api/traffic
 ```
 
+- 查看防火墙规则
+iptables -L MININETMON_IN
+
 ### 设置开机自启动
 ``` bash
 vi /etc/rc.local
